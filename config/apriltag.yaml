@@ -1,0 +1,24 @@
+apriltag:
+  ros__parameters:
+    image_transport: raw
+    family: 36h11
+    size: 0.08                # tag physical size in metres (8 cm)
+    max_hamming: 0            # 0 = only perfectly decoded tags accepted
+
+    detector:
+      threads: 2
+      decimate: 2.0           # downsample before detection (faster, less accurate at range)
+      blur: 0.0
+      refine: true
+      sharpening: 0.25
+      debug: false
+
+    pose_estimation_method: pnp
+
+    tag:
+      # Tag IDs must match the printed AprilTags in the arena.
+      # Tag 1,2 = stations; 10-13 = drop boxes.
+      ids:    [1,  2,  10,  11,  12,  13]
+      frames: [station_1_tag, station_2_tag,
+               dropbox_1_tag, dropbox_2_tag, dropbox_3_tag, dropbox_4_tag]
+      sizes:  [0.08, 0.08, 0.08, 0.08, 0.08, 0.08]

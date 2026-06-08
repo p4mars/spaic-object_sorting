@@ -1,0 +1,13 @@
+semantic_map_node:
+  ros__parameters:
+    map_frame: map
+    save_path: maps/semantic_map.yaml
+    sample_window: 15
+    time_interval: 0.5
+    tag_names:
+      - "1:station_1"
+      - "2:station_2"
+      - "10:dropbox_1"
+      - "11:dropbox_2"
+      - "12:dropbox_3"
+      - "13:dropbox_4"

@@ -1,0 +1,60 @@
+# station_locations.yaml
+# ──────────────────────
+# Map-frame poses for the sorting mission.
+# Units: metres (x, y) and radians (yaw).
+#
+# FILL IN THESE VALUES after the mapping session:
+#   1. Build map with: ros2 launch mirte_sorting mapping.launch.py
+#   2. Open RViz2 → click "2D Nav Goal" at each station entrance
+#   3. ros2 topic echo /goal_pose --once  → copy x, y, yaw
+#
+# yaw guide:  0.00 = +X (right)   1.57 = +Y (up)
+#             3.14 = -X (left)   -1.57 = -Y (down)
+#
+# Bin colours: heart=yellow  triangle=red  hexagon=green  l_shape=blue
+
+mission_planner_node:
+  ros__parameters:
+
+    map_frame: map
+
+    # Source station — where objects are picked up
+    source_station:
+      x:   1.00    # ← EDIT after mapping
+      y:   0.50    # ← EDIT after mapping
+      yaw: 0.00    # ← robot should face the table
+
+    # Destination station — general approach point in front of bin cluster
+    destination_station:
+      x:   3.00    # ← EDIT after mapping
+      y:   0.50    # ← EDIT after mapping
+      yaw: 1.57    # ← robot should face the bins
+
+    # Start pose fallback (actual start is read from TF at runtime)
+    start_pose:
+      x:   0.00
+      y:   0.00
+      yaw: 0.00
+
+    # Bin approach poses — set ~0.3 m in front of each bin opening
+    bins:
+      heart:           # yellow bin
+        x:   3.20
+        y:   0.80
+        yaw: 1.57
+      triangle:        # red bin
+        x:   3.20
+        y:   0.50
+        yaw: 1.57
+      hexagon:         # green bin
+        x:   3.20
+        y:   0.20
+        yaw: 1.57
+      l_shape:         # blue bin
+        x:   3.20
+        y:  -0.10
+        yaw: 1.57
+      default:         # fallback for unrecognised class
+        x:   3.20
+        y:  -0.40
+        yaw: 1.57
