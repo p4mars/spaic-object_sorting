@@ -224,7 +224,7 @@ class PerceptionNode(Node):
                     # Sample depth across horizontal slice of bounding box
                     z_list = []
                     for px in range(max(0, cx - half_w), min(W, cx + half_w)):
-                        if 0 <= cy < H:
+                        if 0 < cy < H:
                             d_val = depth[cy, px]
                             if d_val > 0:
                                 z_list.append((d_val, px))
@@ -233,6 +233,7 @@ class PerceptionNode(Node):
                         continue
 
                     z_list.sort()
+
                     z_mm, best_px = z_list[len(z_list) // 2]
                     z = float(z_mm) / 1000.0
 

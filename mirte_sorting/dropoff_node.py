@@ -42,10 +42,17 @@ class DropoffNode(Node):
             self.arm = MoveIt2(
                 node=self,
                 joint_names=["shoulder_pan", "shoulder_lift", "elbow", "wrist"],
-                base_link="base_link",
+                base_link_name="base_link",
                 end_effector_link="gripper_link",
             )
-            self.gripper = GripperInterface(self)
+            self.gripper = GripperInterface(
+                node=self,
+                gripper_joint_names=["gripper_finger_left_joint", "gripper_finger_right_joint"],
+                base_link_name="base_link",
+                open_positions=[0.04, 0.04],   # 4 cm open
+                close_positions=[0.0, 0.0]     # fully closed
+            )
+
         else:
             self.get_logger().warn(
                 "pymoveit2 not available — arm motion will be skipped. "
