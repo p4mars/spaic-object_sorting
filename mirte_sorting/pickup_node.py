@@ -84,16 +84,16 @@ class PickupNode(Node):
         if _MOVEIT_AVAILABLE:
             self.arm = MoveIt2(
                 node=self,
-                joint_names=["shoulder_pan", "shoulder_lift", "elbow", "wrist"],
+                joint_names=["shoulder_pan_joint", "shoulder_lift_joint", "elbow_joint", "wrist_joint"],
                 base_link_name="base_link",
+                end_effector_name="wrist",
                 group_name="arm"
             )
 
-            self.arm = MoveIt2(
+            self.gripper = GripperInterface(
                 node=self,
-                joint_names=["shoulder_pan", "shoulder_lift", "elbow", "wrist"],
-                base_link_name="base_link",
-                group_name="arm"
+                gripper_joint_names=["gripper_joint"],
+                group_name="gripper"
             )
 
 

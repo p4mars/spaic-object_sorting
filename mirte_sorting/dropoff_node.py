@@ -41,16 +41,17 @@ class DropoffNode(Node):
         if _MOVEIT_AVAILABLE:
             self.arm = MoveIt2(
                 node=self,
-                joint_names=["shoulder_pan", "shoulder_lift", "elbow", "wrist"],
+                joint_names=["shoulder_pan_joint", "shoulder_lift_joint", "elbow_joint", "wrist_joint"],
                 base_link_name="base_link",
+                end_effector_name="wrist",
                 group_name="arm"
             )
 
             self.gripper = GripperInterface(
                 node=self,
-                gripper_joint_names=["gripper_finger_left_joint", "gripper_finger_right_joint"],
+                gripper_joint_names=["gripper_joint"],
                 group_name="gripper"
-            )
+)
 
 
         else:
