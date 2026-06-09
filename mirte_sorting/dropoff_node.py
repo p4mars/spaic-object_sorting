@@ -51,7 +51,7 @@ class DropoffNode(Node):
                 node=self,
                 gripper_joint_names=["gripper_joint"],
                 group_name="gripper"
-)
+            )
 
 
         else:
