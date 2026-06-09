@@ -86,6 +86,13 @@ def generate_launch_description():
             output="screen",
             condition=IfCondition(publish_compat_tfs),
         ),
+        Node(
+            package="tf2_ros",
+            executable="static_transform_publisher",
+            arguments=["0.0", "0.0", "0.18", "0", "0", "0", "base_footprint", "laser"],
+            output="screen",
+            condition=IfCondition(publish_compat_tfs),
+        ),
 
         # ── Camera info sync → AprilTag requires matched timestamps ────────
         Node(

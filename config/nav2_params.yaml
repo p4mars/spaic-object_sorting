@@ -10,6 +10,7 @@ amcl:
     odom_frame_id: odom
     global_frame_id: map
     scan_topic: /scan
+    transform_tolerance: 1.0
     robot_model_type: nav2_amcl::OmniMotionModel   # mecanum = omnidirectional
     set_initial_pose: true
     initial_pose:
