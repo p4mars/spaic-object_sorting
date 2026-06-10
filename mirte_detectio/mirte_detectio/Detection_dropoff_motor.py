@@ -19,8 +19,17 @@ class DropoffMotorNode(Node):
         # publisher to activate dropoff arm
         self.drop_pub = self.create_publisher(String, "/activate_arm/drop", 10)
 
+        self.create_subscription(String, "/block_dropped_off", self.dropped_cb, 10)
+        self.detect_pub = self.create_publisher(String, "/activate_detection", 10)
+
         self.get_logger().info("Dropoff motor node ready")
 
+    def dropped_cb(self, msg):
+        if msg.data == "dropped_off":
+            out = String()
+            out.data = "start"
+            self.detect_pub.publish(out)
+            self.get_logger().info("[DROPOFF] Detection restarted")
 
     def cb(self, msg):
         if msg.data != "start":

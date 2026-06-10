@@ -84,17 +84,20 @@ class PickupNode(Node):
         if _MOVEIT_AVAILABLE:
             self.arm = MoveIt2(
                 node=self,
-                joint_names=["shoulder_pan", "shoulder_lift", "elbow", "wrist"],
+                joint_names=["shoulder_pan_joint", "shoulder_lift_joint", "elbow_joint", "wrist_joint"],
                 base_link_name="base_link",
-                end_effector_link="gripper_link",
+                end_effector_name="wrist",
+                group_name="arm"
             )
+
             self.gripper = GripperInterface(
                 node=self,
-                gripper_joint_names=["gripper_finger_left_joint", "gripper_finger_right_joint"],
-                base_link_name="base_link",
-                open_positions=[0.04, 0.04],   # 4 cm open
-                close_positions=[0.0, 0.0]     # fully closed
+                gripper_joint_names=["gripper_joint"],
+                open_gripper_joint_positions=[0.04],
+                closed_gripper_joint_positions=[0.0],
+                gripper_group_name="gripper"
             )
+
 
         else:
             self.get_logger().warn(
