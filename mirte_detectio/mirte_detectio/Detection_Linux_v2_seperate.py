@@ -1,4 +1,4 @@
-import scripts.Detection.Detection_Functions as DF
+import mirte_detectio.Detection_Functions as DF
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Image
@@ -61,7 +61,7 @@ class PerceptionNode(Node):
 
         # frame buffer
         self.frame_buffer = []
-        self.N_FRAMES = 10
+        self.N_FRAMES = 2
 
         # confidence threshold
         self.conf_thres = 0.5
@@ -83,7 +83,10 @@ class PerceptionNode(Node):
         self.cy_d = self.image_size[1] / 2.0
 
         # timer loop that activates loop every n seconds
-        self.timer = self.create_timer(0.1, self.loop)
+        self.timer = self.create_timer(1.0, self.loop)
+
+        self.last_detection_time = self.get_clock().now()
+        self.detection_timeout = 10.0  # seconds
 
 
     def activate_cb(self, msg):
@@ -198,8 +201,25 @@ class PerceptionNode(Node):
         target = DF.pick_best(fused)
 
         if target is None:
-            self.get_logger().info("No detections — staying idle")
+            elapsed = (self.get_clock().now() - self.last_detection_time).nanoseconds / 1e9
+            if elapsed > self.detection_timeout:
+                self.get_logger().info("No detections for 10s — publishing fake target 20cm ahead")
+                fake = PoseStamped()
+                fake.header.stamp = self.get_clock().now().to_msg()
+                fake.header.frame_id = "base_link"
+                fake.pose.position.x = 0.20
+                fake.pose.position.y = 0.0
+                fake.pose.position.z = 0.05
+                fake.pose.orientation.w = 1.0
+                self.target_pub.publish(fake)
+                self.target_pub_class.publish(String(data="triangle"))
+                self.active = False
+            else:
+                self.get_logger().info("No detections — staying idle")
             return
+
+        # reset timer when detection found
+        self.last_detection_time = self.get_clock().now()
 
         # unpack target (already in camera frame)
         x, y, z = target["pos"]
@@ -217,47 +237,34 @@ class PerceptionNode(Node):
         point_cam.point.z = z
 
         try:
-            point_odom = self.tf_buffer.transform(
+            point_base = self.tf_buffer.transform(
                 point_cam,
-                "odom",
+                "base_link",
                 timeout=rclpy.duration.Duration(seconds=0.5)
             )
         except Exception as e:
-            self.get_logger().warn(f"TF transform camera to odom failed: {e}")
+            self.get_logger().warn(f"TF transform camera to base_link failed: {e}")
             return
 
-        bx = point_odom.point.x
-        by = point_odom.point.y
-        bz = point_odom.point.z
 
         grasp = PoseStamped()
         grasp.header.stamp = self.get_clock().now().to_msg()
-        grasp.header.frame_id = "odom"
-
-        grasp.pose.position.x = bx
-        grasp.pose.position.y = by
-        grasp.pose.position.z = bz
+        grasp.header.frame_id = "base_link"
+        grasp.pose.position.x = point_base.point.x
+        grasp.pose.position.y = point_base.point.y
+        grasp.pose.position.z = point_base.point.z
         grasp.pose.orientation = Quaternion(x=0.0, y=0.0, z=0.0, w=1.0)
-
         self.arm_grasp_pub.publish(grasp)
-        self.get_logger().info(f"[BLOCK] base_link=({x:.3f}, {y:.3f}, {z:.3f})")
 
-        # Publish navigation target for your new motor node
         nav = PoseStamped()
         nav.header.stamp = self.get_clock().now().to_msg()
-        nav.header.frame_id = "odom"
-
-        dist = math.sqrt(bx*bx + by*by)
-        ux = bx / dist
-        uy = by / dist
-
-        nav.pose.position.x = bx - self.block_stop * ux
-        nav.pose.position.y = by - self.block_stop * uy
+        nav.header.frame_id = "base_link"
+        bx, by = point_base.point.x, point_base.point.y
+        nav.pose.position.x = bx - self.block_stop * (bx / (math.sqrt(bx ** 2 + by ** 2) + 1e-6))
+        nav.pose.position.y = by - self.block_stop * (by / (math.sqrt(bx ** 2 + by ** 2) + 1e-6))
         nav.pose.position.z = 0.0
-
         yaw = math.atan2(by, bx)
         nav.pose.orientation = self.yaw_to_quaternion(yaw)
-
         self.target_pub.publish(nav)
         self.target_pub_class.publish(String(data=target["class"]))
 

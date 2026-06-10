@@ -1,0 +1,105 @@
+docker compose up -d
+docker exec -it mirte-dev bash
+
+colcon build --symlink-install
+source install/setup.bash 
+
+#startup gazebo
+ros2 launch mirte_gazebo gazebo_mirte_master_empty.launch.xml extra_gazebo_args:="--physics-update-rate 100"
+
+#startup moveit2
+ros2 launch mirte_moveit_config move_group.launch.py
+
+#launching detection package
+cd /workspaces/mirte_ws
+colcon build --packages-select mirte_detectio
+source install/setup.bash
+cp /workspaces/mirte_ws/src/mirte_detectio/mirte_detectio/best.pt \
+   /workspaces/mirte_ws/install/mirte_detectio/lib/python3.10/site-packages/mirte_detectio/best.pt
+ros2 launch mirte_detectio detection_full.launch.py
+
+#trigger for package
+ros2 topic pub --once /activate_detection std_msgs/msg/String "data: start"
+
+#code to run detection
+cd /workspaces/mirte_ws && source install/setup.bash
+ros2 run mirte_detectio Detection_Linux_v2
+
+#start motor control node
+cd /workspaces/mirte_ws && source install/setup.bash
+ros2 run mirte_detectio Detection_motor_control
+ros2 topic pub --once /detected_object/pos geometry_msgs/msg/PoseStamped "
+header:
+  frame_id: 'base_link'
+pose:
+  position:
+    x: 0.2
+    y: 0.0
+    z: 0.0
+  orientation:
+    w: 1.0"
+
+#start arm pickup
+cd /workspaces/mirte_ws && source install/setup.bash
+ros2 run mirte_detectio Detection_pickup_v2
+ros2 topic pub --once /arm_grasp_pose geometry_msgs/msg/PoseStamped "
+header:
+ros2 topic pub --once /arm_grasp_pose geometry_msgs/msg/PoseStamped "
+header:
+  frame_id: 'base_link'
+pose:
+  position:
+    x: 0.25
+    y: 0.0
+    z: 0.05
+  orientation:
+    w: 1.0"
+ros2 topic pub --once /detected_object/class std_msgs/msg/String "data: triangle"
+ros2 topic pub --once /activate_arm/pick std_msgs/msg/String "data: start"
+
+#start dropoff motor
+cd /workspaces/mirte_ws && source install/setup.bash
+ros2 run mirte_detectio Detection_dropoff_motor
+ros2 topic pub --once /activate_dropoff_move std_msgs/msg/String "data: start"
+
+#start arm dropoff
+cd /workspaces/mirte_ws && source install/setup.bash
+ros2 run mirte_detectio Detection_dropoff
+ros2 topic pub --once /activate_arm/drop std_msgs/msg/String "data: start"
+
+# code to show YOLO freezes
+python3 -c "
+from ultralytics import YOLO
+from pathlib import Path
+model = YOLO('/workspaces/mirte_ws/src/mirte_detectio/mirte_detectio/best.pt')
+print('Classes:', model.names)
+"
+
+python3 -c "
+import rclpy
+from rclpy.node import Node
+from sensor_msgs.msg import Image
+from cv_bridge import CvBridge
+from ultralytics import YOLO
+from pathlib import Path
+
+model = YOLO('/workspaces/mirte_ws/src/mirte_detectio/mirte_detectio/best.pt')
+print('Model loaded, classes:', model.names)
+
+rclpy.init()
+node = Node('test_yolo')
+bridge = CvBridge()
+
+def cb(msg):
+    img = bridge.imgmsg_to_cv2(msg, 'bgr8')
+    results = model(img)
+    for r in results:
+        print('Detections:', len(r.boxes))
+        for i in range(len(r.boxes)):
+            print(f'  class={r.names[int(r.boxes.cls[i])]}, conf={r.boxes.conf[i]:.2f}')
+    rclpy.shutdown()
+
+node.create_subscription(Image, '/camera/color/image_raw', cb, 10)
+print('Waiting for one frame...')
+rclpy.spin(node)
+"
