@@ -131,13 +131,13 @@ def generate_launch_description():
         ),
 
         # ── Velocity relay: Nav2 → MIRTE base controller ───────────────────
-        # Nav2 velocity_smoother publishes /cmd_vel_smoothed.
-        # MIRTE base controller subscribes to its own topic.
+        # In Nav2 Humble non-composition mode, velocity_smoother remaps
+        # cmd_vel_smoothed → cmd_vel, so the final output is on /cmd_vel.
         Node(
             package="topic_tools",
             executable="relay",
             name="cmd_vel_relay",
-            arguments=["/cmd_vel_smoothed",
+            arguments=["/cmd_vel",
                        "/mirte_base_controller/cmd_vel_unstamped"],
             output="screen",
         ),
