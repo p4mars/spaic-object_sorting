@@ -58,7 +58,6 @@ def generate_launch_description():
     station_params = PathJoinSubstitution([pkg, "config", "station_locations.yaml"])
     apriltag_cfg   = PathJoinSubstitution([pkg, "config", "apriltag.yaml"])
     semantic_cfg   = PathJoinSubstitution([pkg, "config", "semantic_map_config.yaml"])
-    bt_xml         = PathJoinSubstitution([pkg, "behavior_trees", "nav_to_pose_simple.xml"])
     rviz_cfg       = PathJoinSubstitution([
         FindPackageShare("nav2_bringup"), "rviz", "nav2_default_view.rviz"])
 
@@ -114,21 +113,6 @@ def generate_launch_description():
                 "params_file":     LaunchConfiguration("params_file"),
                 "use_composition": "False",
             }.items(),
-        ),
-
-        # Override bt_navigator to use the custom BT XML (4-retry recovery)
-        # This parameter_overrides approach works because nav2_bringup launches
-        # bt_navigator as a separate process that reads ROS params at startup.
-        Node(
-            package="nav2_bt_navigator",
-            executable="bt_navigator",
-            name="bt_navigator",
-            output="screen",
-            parameters=[
-                LaunchConfiguration("params_file"),
-                {"default_nav_to_pose_bt_xml": bt_xml,
-                 "default_nav_through_poses_bt_xml": bt_xml},
-            ],
         ),
 
         # ── Velocity relay: Nav2 → MIRTE base controller ───────────────────
