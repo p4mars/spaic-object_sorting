@@ -210,9 +210,9 @@ class PerceptionNode(Node):
             return
 
         detections = []
-        H, W = self.image_size[1], self.image_size[0]
 
         for color, depth in self.frame_buffer:
+            H, W = color.shape[:2]
             results = self._model(color)
             for result in results:
                 boxes = result.boxes
@@ -263,7 +263,8 @@ class PerceptionNode(Node):
                     })
 
         self.frame_buffer = []
-        self.get_logger().info(f"Detection buffer size: {len(self.frame_buffer)}")
+        self.get_logger().info(f"Buffer size {len(self.frame_buffer)}")
+        self.get_logger().info(f"Detections after depth sampling: {len(detections)}")
 
         clusters = DF.cluster_detections(detections, radius=10)
         fused = DF.fuse_clusters(clusters)
