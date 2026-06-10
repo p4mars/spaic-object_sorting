@@ -81,8 +81,6 @@ class _SensorMonitor(Node):
         self.create_subscription(Imu,       IMU_TOPIC,    self._imu_cb,  _qos)
         self.create_subscription(Range,   SONAR_L_TOPIC, self._sl_range_cb, _qos)
         self.create_subscription(Range,   SONAR_R_TOPIC, self._sr_range_cb, _qos)
-        self.create_subscription(Float32, SONAR_L_TOPIC, self._sl_float_cb, _qos)
-        self.create_subscription(Float32, SONAR_R_TOPIC, self._sr_float_cb, _qos)
 
     def _scan_cb(self, m): self.scan  = m; self.scan_t = time.time()
     def _odom_cb(self, m): self.odom  = m; self.odom_t = time.time()

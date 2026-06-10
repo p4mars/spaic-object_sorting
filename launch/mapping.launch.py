@@ -1,26 +1,31 @@
 """
 mapping.launch.py
 ─────────────────
-STEP 1: Use this launch file to build the arena map before demo day.
+STEP 1: Build the arena map before demo day.
 
 Starts:
-  - SLAM Toolbox (online async) → builds /map in real time
-  - AprilTag detection → identifies station/bin tags
-  - CameraInfoSync → ensures AprilTag receives correct camera info
-  - SemanticMapNode → records tag positions; call save_semantic_map service when done
-  - Odom relay: /mirte_base_controller/odom → /odom
-  - Static TFs: base_link ↔ base_footprint and base_link ↔ base_frame
-  - Hybrid localiser: fuses AMCL + RTAB-Map → /robot_pose
+  - robot_localization EKF      — fuses /odom + /imu → /odometry/filtered
+  - SLAM Toolbox (online async) — builds the 2-D occupancy grid map (/map)
+  - RTAB-Map SLAM (optional)    — builds visual database (/home/mirte/rtabmap.db)
+    Pass use_rtabmap_mapping:=true to enable alongside SLAM Toolbox.
+    RTAB-Map runs with publish_tf:=false so it does not conflict with SLAM Toolbox.
+  - AprilTag + CameraInfoSync   — detect station/bin tags during mapping
+  - SemanticMapNode             — records tag positions in map frame
+  - Odom relay                  — /mirte_base_controller/odom → /odom
+  - Compatibility static TFs
 
-Drive the robot around the arena, then:
+When done driving:
   ros2 service call /save_semantic_map std_srvs/srv/Trigger
-  ros2 service call /slam_toolbox/save_map slam_toolbox/srv/SaveMap "{name: {data: '/home/mirte/sorting_map'}}"
+  ros2 service call /slam_toolbox/save_map slam_toolbox/srv/SaveMap \\
+    "{name: {data: '/home/mirte/sorting_map'}}"
 
 Usage:
   ros2 launch mirte_sorting mapping.launch.py
+
+  Also build RTAB-Map visual database:
+  ros2 launch mirte_sorting mapping.launch.py use_rtabmap_mapping:=true
 """
 
-import os
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
 from launch.conditions import IfCondition
@@ -32,13 +37,16 @@ from launch_ros.substitutions import FindPackageShare
 def generate_launch_description():
     pkg = FindPackageShare("mirte_sorting")
 
-    slam_params = PathJoinSubstitution([pkg, "config", "slam_params.yaml"])
-    apriltag_config = PathJoinSubstitution([pkg, "config", "apriltag.yaml"])
-    semantic_config = PathJoinSubstitution([pkg, "config", "semantic_map_config.yaml"])
+    slam_params    = PathJoinSubstitution([pkg, "config", "slam_params.yaml"])
+    ekf_params     = PathJoinSubstitution([pkg, "config", "ekf.yaml"])
+    rtabmap_params = PathJoinSubstitution([pkg, "config", "rtabmap.yaml"])
+    apriltag_cfg   = PathJoinSubstitution([pkg, "config", "apriltag.yaml"])
+    semantic_cfg   = PathJoinSubstitution([pkg, "config", "semantic_map_config.yaml"])
 
-    use_odom_relay     = LaunchConfiguration("use_odom_relay")
-    publish_compat_tfs = LaunchConfiguration("publish_compat_tfs")
-    use_sim_time       = LaunchConfiguration("use_sim_time")
+    use_odom_relay       = LaunchConfiguration("use_odom_relay")
+    publish_compat_tfs   = LaunchConfiguration("publish_compat_tfs")
+    use_sim_time         = LaunchConfiguration("use_sim_time")
+    use_rtabmap_mapping  = LaunchConfiguration("use_rtabmap_mapping")
 
     return LaunchDescription([
 
@@ -50,9 +58,21 @@ def generate_launch_description():
             description="Publish base_link ↔ base_footprint static TF"),
         DeclareLaunchArgument("use_sim_time",
             default_value="false"),
+        DeclareLaunchArgument("use_rtabmap_mapping",
+            default_value="false",
+            description="Also run RTAB-Map SLAM to build /home/mirte/rtabmap.db"),
 
-        # ── SLAM Toolbox ──────────────────────────────────────────────────
-        # Builds the occupancy grid map from /scan + /odom
+        # ── EKF: fuses /odom + /imu → /odometry/filtered ──────────────────
+        # SLAM Toolbox benefits from the smoothed odometry for scan matching.
+        Node(
+            package="robot_localization",
+            executable="ekf_node",
+            name="ekf_filter_node",
+            output="screen",
+            parameters=[ekf_params, {"use_sim_time": use_sim_time}],
+        ),
+
+        # ── SLAM Toolbox: 2-D occupancy grid ──────────────────────────────
         Node(
             package="slam_toolbox",
             executable="async_slam_toolbox_node",
@@ -61,11 +81,34 @@ def generate_launch_description():
             parameters=[slam_params, {"use_sim_time": use_sim_time}],
         ),
 
-        # ── Odom relay ────────────────────────────────────────────────────
-        # MIRTE publishes odometry on a long topic; relay to standard /odom
+        # ── RTAB-Map SLAM (optional): visual database ──────────────────────
+        # publish_tf:false — SLAM Toolbox owns map→odom; RTAB-Map only saves
+        # the visual database used later in localisation mode.
+        Node(
+            condition=IfCondition(use_rtabmap_mapping),
+            package="rtabmap_ros",
+            executable="rtabmap",
+            name="rtabmap",
+            output="screen",
+            parameters=[
+                rtabmap_params,
+                {"Mem/IncrementalMemory": "true",
+                 "Mem/InitWMWithAllNodes": "false",
+                 "publish_tf": False},
+            ],
+            remappings=[
+                ("rgb/image",       "/camera/color/image_raw"),
+                ("rgb/camera_info", "/camera/color/camera_info"),
+                ("depth/image",     "/camera/depth/image_raw"),
+                ("odom",            "/odometry/filtered"),
+            ],
+        ),
+
+        # ── Odom relay ─────────────────────────────────────────────────────
         Node(
             package="topic_tools",
             executable="relay",
+            name="odom_relay",
             arguments=["/mirte_base_controller/odom", "/odom"],
             output="screen",
             condition=IfCondition(use_odom_relay),
@@ -94,7 +137,7 @@ def generate_launch_description():
             condition=IfCondition(publish_compat_tfs),
         ),
 
-        # ── Camera info sync → AprilTag requires matched timestamps ────────
+        # ── Camera info sync → AprilTag ────────────────────────────────────
         Node(
             package="mirte_sorting",
             executable="camera_info_sync_node",
@@ -108,43 +151,24 @@ def generate_launch_description():
                 "use_image_frame_id":      True,
             }],
         ),
-
-        # ── AprilTag detection ────────────────────────────────────────────
         Node(
             package="apriltag_ros",
             executable="apriltag_node",
             name="apriltag",
             output="screen",
-            parameters=[apriltag_config],
+            parameters=[apriltag_cfg],
             remappings=[
                 ("image_rect",   "/apriltag/image_rect"),
                 ("camera_info",  "/apriltag/camera_info"),
             ],
         ),
 
-        # ── Semantic map (averages AprilTag TF positions) ─────────────────
+        # ── Semantic map ───────────────────────────────────────────────────
         Node(
             package="mirte_sorting",
             executable="semantic_map_node",
             name="semantic_map_node",
             output="screen",
-            parameters=[semantic_config],
+            parameters=[semantic_cfg],
         ),
-
-        # ── Hybrid localiser: fuses AMCL + RTAB-Map → /robot_pose ─────────
-        Node(
-            package="mirte_sorting",
-            executable="hybrid_localiser",
-            name="hybrid_localiser",
-            output="screen",
-        ),
-
-        # ── Localisation input: sends initial pose to AMCL when map ready ─
-        Node(
-            package="mirte_sorting",
-            executable="localisation_input_node",
-            name="localisation_input_node",
-            output="screen",
-        ),
-
     ])

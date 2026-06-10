@@ -12,7 +12,7 @@ slam_toolbox:
     # Frames and topics — must match MIRTE TF tree
     odom_frame: odom
     map_frame: map
-    base_frame: base_link          # MIRTE base frame
+    base_frame: base_footprint     # match AMCL base_frame_id
     scan_topic: /scan              # RPLidar C1
 
     # Mode

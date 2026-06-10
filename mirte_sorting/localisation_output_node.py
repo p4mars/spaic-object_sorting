@@ -2,8 +2,9 @@
 """
 localisation_output_node.py
 ───────────────────────────
-Subscribes to /amcl_pose and logs the robot's position and heading.
-Can be extended to re-publish the pose on a custom topic if needed.
+Subscribes to /robot_pose (the fused output from hybrid_localiser) and logs
+the robot's position and heading. Reflects whichever source is active:
+AMCL, RTAB-Map fusion, or odometry fallback.
 """
 
 import math
@@ -22,7 +23,7 @@ class LocalisationOutputNode(Node):
         self.current_yaw = 0.0
 
         self.create_subscription(
-            PoseWithCovarianceStamped, "/amcl_pose", self._pose_cb, 10)
+            PoseWithCovarianceStamped, "/robot_pose", self._pose_cb, 10)
         self.get_logger().info("LocalisationOutputNode started.")
 
     def _pose_cb(self, msg: PoseWithCovarianceStamped):
