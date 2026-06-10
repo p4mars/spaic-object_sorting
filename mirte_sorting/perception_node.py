@@ -175,7 +175,7 @@ class PerceptionNode(Node):
         self.search_angle += self.search_direction * self.search_step
         if abs(self.search_angle) > self.search_limit:
             self.search_direction *= -1
-            self.flipdir += 1
+            self.flipdir += 0
             self.search_angle = self.search_direction * self.search_step
 
         if self.flipdir >= 2:
@@ -221,13 +221,21 @@ class PerceptionNode(Node):
                     cy = int(boxes.xywh[i][1].item())
                     half_w = max(1, int(boxes.xywh[i][2].item() / 2))
 
-                    # Sample depth across horizontal slice of bounding box
+                    # # Sample depth across horizontal slice of bounding box
+                    # z_list = []
+                    # for px in range(max(0, cx - half_w), min(W, cx + half_w)):
+                    #     if 0 < cy < H:
+                    #         d_val = depth[cy, px]
+                    #         if d_val > 0:
+                    #             z_list.append((d_val, px))
+                    radius = 20
                     z_list = []
-                    for px in range(max(0, cx - half_w), min(W, cx + half_w)):
-                        if 0 < cy < H:
-                            d_val = depth[cy, px]
-                            if d_val > 0:
-                                z_list.append((d_val, px))
+
+                    for py in range(max(0, cy - radius), min(H, cy + radius)):
+                        for px in range(max(0, cx - radius), min(W, cx + radius)):
+                            d_val = depth[py, px]
+                            if d_val > 0:   # ignore invalid depth
+                                z_list.append((d_val, px, py))
 
                     if not z_list:
                         continue
@@ -255,6 +263,7 @@ class PerceptionNode(Node):
                     })
 
         self.frame_buffer = []
+        self.get_logger().info(f"Detection buffer size: {len(self.frame_buffer)}")
 
         clusters = DF.cluster_detections(detections, radius=10)
         fused = DF.fuse_clusters(clusters)
