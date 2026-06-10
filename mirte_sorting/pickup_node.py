@@ -24,6 +24,7 @@ Publishes:
 
 import math
 from pathlib import Path
+import time
 
 import rclpy
 from cv_bridge import CvBridge
@@ -82,20 +83,36 @@ class PickupNode(Node):
 
         # ── MoveIt2 arm interface ──────────────────────────────────────────
         if _MOVEIT_AVAILABLE:
+            # self.arm = MoveIt2(
+            #     node=self,
+            #     joint_names=["shoulder_pan_joint", "shoulder_lift_joint", "elbow_joint", "wrist_joint"],
+            #     base_link_name="base_link",
+            #     end_effector_name="wrist",
+            #     group_name="arm"
+            # )
+
+            # self.gripper = GripperInterface(
+            #     node=self,
+            #     gripper_joint_names=["gripper_joint"],
+            #     open_gripper_joint_positions=[0.04],
+            #     closed_gripper_joint_positions=[0.0],
+            #     gripper_group_name="gripper"
+            # )
             self.arm = MoveIt2(
                 node=self,
                 joint_names=["shoulder_pan_joint", "shoulder_lift_joint", "elbow_joint", "wrist_joint"],
                 base_link_name="base_link",
                 end_effector_name="wrist",
-                group_name="arm"
+                group_name="mirte_arm",
+                use_move_group_action=True,
             )
 
             self.gripper = GripperInterface(
                 node=self,
                 gripper_joint_names=["gripper_joint"],
-                open_gripper_joint_positions=[0.04],
-                closed_gripper_joint_positions=[0.0],
-                gripper_group_name="gripper"
+                open_gripper_joint_positions=[0.2102],
+                closed_gripper_joint_positions=[-0.2],
+                gripper_command_action_name="/mirte_master_gripper_controller/gripper_cmd",
             )
 
 
@@ -176,10 +193,67 @@ class PickupNode(Node):
         by = grasp_base.pose.position.y
         bz = grasp_base.pose.position.z
 
-        # Optionally refine class from close-up camera view
-        self._refine_class_from_camera()
+        if self.color is None:
+            self.get_logger().warn("No camera frame received yet, skipping YOLO re-check")
+
+        else:
+            # YOLO re-check to confirm class closest to center
+            results = model(self.color)
+            detections = []
+
+            for result in results:
+                boxes = result.boxes
+                for i in range(len(boxes)):
+
+                    cx = int(boxes.xywh[i][0].item())
+                    cy = int(boxes.xywh[i][1].item())
+
+                    class_id = int(boxes.cls[i].item())
+                    class_name = result.names[class_id]
+                    conf = float(boxes.conf[i].item())
+
+                    if conf <= self.conf_thres:
+                        continue
+
+                    detections.append({
+                        "class": class_name,
+                        "pixel": (cx, cy)
+                    })
+
+            if len(detections) > 0:
+                class_candidate = []
+                for det in detections:
+                    px, py = det["pixel"]
+                    # distance from image center
+                    d_x = abs(px - self.image_size[0] / 2)
+                    class_candidate.append((d_x, det["class"]))
+
+                class_candidate.sort()
+                new_class = class_candidate[0][1]
+
+                if new_class != self.class_name:
+                    self.target_pub_class.publish(String(data=new_class))
+                    self.class_name = new_class
 
         # Pre-grasp: 10 cm behind the object
+        self.get_logger().info("Waiting for MoveIt to be ready...")
+        time.sleep(5.0)
+        self.get_logger().info("Attempting pre-grasp planning...")
+
+        # Move to home first
+        self.get_logger().info("Moving to home position...")
+        traj = self.arm.plan(
+            joint_positions=[0.0, 0.0, 0.0, 0.0],
+            joint_names=["shoulder_pan_joint", "shoulder_lift_joint", "elbow_joint", "wrist_joint"]
+        )
+        if traj is not None:
+            self.get_logger().info("Home plan succeeded, executing...")
+            self.arm.execute(traj)
+            time.sleep(2.0)
+        else:
+            self.get_logger().warn("Home planning failed")
+            return
+
         dist = math.sqrt(bx ** 2 + by ** 2)
         if dist > 1e-6:
             ux, uy = bx / dist, by / dist
@@ -194,12 +268,21 @@ class PickupNode(Node):
         pre.pose.orientation = grasp_base.pose.orientation
 
         try:
-            self.arm.set_pose_goal(pre.pose)
-            self.arm.execute()
+            # Move to pre-grasp
+            traj = self.arm.plan(pose=pre)
+            if traj is not None:
+                self.arm.execute(traj)
+            else:
+                self.get_logger().warn("Pre-grasp planning failed")
+                return
 
             # Move to exact grasp position
-            self.arm.set_pose_goal(grasp_base.pose)
-            self.arm.execute()
+            traj = self.arm.plan(pose=grasp_base.pose)
+            if traj is not None:
+                self.arm.execute(traj)
+            else:
+                self.get_logger().warn("grasp planning failed")
+                return
 
             # Close gripper
             self.gripper.close()
@@ -211,8 +294,13 @@ class PickupNode(Node):
             lift.pose.position.y = by
             lift.pose.position.z = bz + 0.15
             lift.pose.orientation = grasp_base.pose.orientation
-            self.arm.set_pose_goal(lift.pose)
-            self.arm.execute()
+
+            traj = self.arm.plan(pose=lift.pose)
+            if traj is not None:
+                self.arm.execute(traj)
+            else:
+                self.get_logger().warn("lift planning failed")
+                return
 
             self.get_logger().info("Pick successful.")
             self._publish_pick_done()

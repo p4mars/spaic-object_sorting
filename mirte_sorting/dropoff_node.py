@@ -13,6 +13,7 @@ Publishes:
 """
 
 import rclpy
+import time
 from geometry_msgs.msg import PoseStamped
 from rclpy.node import Node
 from std_msgs.msg import Bool, String
@@ -39,20 +40,37 @@ class DropoffNode(Node):
 
         # ── MoveIt2 arm interface ──────────────────────────────────────────
         if _MOVEIT_AVAILABLE:
+            # self.arm = MoveIt2(
+            #     node=self,
+            #     joint_names=["shoulder_pan_joint", "shoulder_lift_joint", "elbow_joint", "wrist_joint"],
+            #     base_link_name="base_link",
+            #     end_effector_name="wrist",
+            #     group_name="arm"
+            # )
+
+            # self.gripper = GripperInterface(
+            #     node=self,
+            #     gripper_joint_names=["gripper_joint"],
+            #     open_gripper_joint_positions=[0.04],
+            #     closed_gripper_joint_positions=[0.0],
+            #     gripper_group_name="gripper"
+            # )
+            # MoveIt2 interfaces
             self.arm = MoveIt2(
                 node=self,
                 joint_names=["shoulder_pan_joint", "shoulder_lift_joint", "elbow_joint", "wrist_joint"],
                 base_link_name="base_link",
                 end_effector_name="wrist",
-                group_name="arm"
+                group_name="mirte_arm",
+                use_move_group_action=True,
             )
 
             self.gripper = GripperInterface(
                 node=self,
                 gripper_joint_names=["gripper_joint"],
-                open_gripper_joint_positions=[0.04],
-                closed_gripper_joint_positions=[0.0],
-                gripper_group_name="gripper"
+                open_gripper_joint_positions=[0.2102],
+                closed_gripper_joint_positions=[-0.2],
+                gripper_command_action_name="/mirte_master_gripper_controller/gripper_cmd",
             )
 
 
@@ -83,62 +101,111 @@ class DropoffNode(Node):
     # ── Drop execution ─────────────────────────────────────────────────────
 
     def _execute_drop(self):
-        if self.arm is None:
-            self.get_logger().warn("No arm interface — simulating drop.")
-            self.drop_done_pub.publish(Bool(data=True))
-            self.active = False
+        # if self.arm is None:
+        #     self.get_logger().warn("No arm interface — simulating drop.")
+        #     self.drop_done_pub.publish(Bool(data=True))
+        #     self.active = False
+        #     return
+
+        # try:
+        #     # Extend arm to drop-off position above the bin
+        #     # drop = PoseStamped()
+        #     # drop.header.frame_id = "base_link"
+        #     # drop.pose.position.x = 0.25
+        #     # drop.pose.position.y = 0.0
+        #     # drop.pose.position.z = 0.10
+        #     # drop.pose.orientation.w = 1.0
+
+        #     # self.arm.set_pose_goal(drop.pose)
+        #     # self.arm.execute()
+
+        #     # # Release object
+        #     # self.gripper.open()
+
+        #     # # Retract to neutral pose
+        #     # retract = PoseStamped()
+        #     # retract.header.frame_id = "base_link"
+        #     # retract.pose.position.x = 0.10
+        #     # retract.pose.position.y = 0.0
+        #     # retract.pose.position.z = 0.10
+        #     # retract.pose.orientation.w = 1.0
+
+        #     # self.arm.set_pose_goal(retract.pose)
+        #     # self.arm.execute()
+
+        #     self.arm.move_to_pose(
+        #         position=(0.25, 0.0, 0.10),
+        #         quat_xyzw=(0.0,0.0,0.0,0.1),
+        #         frame_id="base_link",
+        #     )
+        #     self.arm.wait_until_executed()
+        #     self.gripper.open()
+
+        #     self.arm.move_to_pose(
+        #         position=(0.1, 0.0, 0.10),
+        #         quat_xyzw=(0.0, 0.0, 0.0, 0.1),
+        #         frame_id="base_link",
+        #     )
+        #     self.arm.wait_until_executed()
+
+
+        #     self.drop_done_pub.publish(Bool(data=True))
+        #     self.get_logger().info("Drop successful.")
+
+        # except Exception as e:
+        #     self.get_logger().error(f"Arm drop execution failed: {e}")
+        #     self.drop_fail_pub.publish(Bool(data=True))
+
+        # self.active = False
+
+        self.get_logger().info("Waiting for MoveIt to be ready...")
+        time.sleep(5.0)
+        self.get_logger().info("Attempting pre-drop planning...")
+        # Move forward to drop-off position
+        drop = PoseStamped()
+        drop.header.frame_id = "base_link"
+        drop.header.stamp = self.get_clock().now().to_msg()
+        drop.pose.position.x = 0.25  # 25 cm forward
+        drop.pose.position.y = 0.0
+        drop.pose.position.z = 0.05  # adjust height if needed
+        drop.pose.orientation.w = 1.0
+
+        traj = self.arm.plan(pose=drop)
+        self.get_logger().info(f"Planning result: {traj}")
+        if traj is not None:
+            self.get_logger().info("Executing pre-drop...")
+            self.arm.execute(traj)
+        else:
+            self.get_logger().warn("Drop planning failed")
             return
 
-        try:
-            # Extend arm to drop-off position above the bin
-            # drop = PoseStamped()
-            # drop.header.frame_id = "base_link"
-            # drop.pose.position.x = 0.25
-            # drop.pose.position.y = 0.0
-            # drop.pose.position.z = 0.10
-            # drop.pose.orientation.w = 1.0
+        # Open gripper to release block
+        self.gripper.open()
 
-            # self.arm.set_pose_goal(drop.pose)
-            # self.arm.execute()
+        # Retract arm back to neutral
+        retract = PoseStamped()
+        retract.header.frame_id = "base_link"
+        retract.header.stamp = self.get_clock().now().to_msg()
+        retract.pose.position.x = 0.10
+        retract.pose.position.y = 0.0
+        retract.pose.position.z = 0.10
+        retract.pose.orientation.w = 1.0
 
-            # # Release object
-            # self.gripper.open()
+        traj = self.arm.plan(pose=retract)
+        if traj is not None:
+            self.arm.execute(traj)
+        else:
+            self.get_logger().warn("Retract planning failed")
+            return
 
-            # # Retract to neutral pose
-            # retract = PoseStamped()
-            # retract.header.frame_id = "base_link"
-            # retract.pose.position.x = 0.10
-            # retract.pose.position.y = 0.0
-            # retract.pose.position.z = 0.10
-            # retract.pose.orientation.w = 1.0
+        # Publish success
+        self.done_pub.publish(String(data="dropped_off"))
+        self.get_logger().info("Block dropped off.")
 
-            # self.arm.set_pose_goal(retract.pose)
-            # self.arm.execute()
-
-            self.arm.move_to_pose(
-                position=(0.25, 0.0, 0.10),
-                quat_xyzw=(0.0,0.0,0.0,0.1),
-                frame_id="base_link",
-            )
-            self.arm.wait_until_executed()
-            self.gripper.open()
-
-            self.arm.move_to_pose(
-                position=(0.1, 0.0, 0.10),
-                quat_xyzw=(0.0, 0.0, 0.0, 0.1),
-                frame_id="base_link",
-            )
-            self.arm.wait_until_executed()
-
-
-            self.drop_done_pub.publish(Bool(data=True))
-            self.get_logger().info("Drop successful.")
-
-        except Exception as e:
-            self.get_logger().error(f"Arm drop execution failed: {e}")
-            self.drop_fail_pub.publish(Bool(data=True))
-
+        # Reset state
         self.active = False
+        time.sleep(2.0)
+
 
 
 def main(args=None):
