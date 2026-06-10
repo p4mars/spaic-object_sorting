@@ -39,7 +39,7 @@ class SemanticMapNode(Node):
         super().__init__("semantic_map_node")
 
         self.declare_parameter("map_frame", "map")
-        self.declare_parameter("save_path", "maps/semantic_map.yaml")
+        self.declare_parameter("save_path", "src/spaic-object_sorting/maps/semantic_map.yaml")
         self.declare_parameter("sample_window", 15)
         self.declare_parameter("time_interval", 0.5)
         self.declare_parameter("tag_names", [
