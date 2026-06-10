@@ -38,7 +38,8 @@ Usage:
 """
 
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.actions import (DeclareLaunchArgument, ExecuteProcess,
+                             IncludeLaunchDescription)
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
@@ -70,6 +71,20 @@ def generate_launch_description():
     use_apriltag_init   = LaunchConfiguration("use_apriltag_init")
 
     return LaunchDescription([
+
+        # ── Pre-launch cleanup ─────────────────────────────────────────────
+        # Kill any stale SLAM Toolbox process — if mapping.launch.py was left
+        # running it publishes map→odom and conflicts with AMCL here.
+        ExecuteProcess(
+            cmd=['bash', '-c',
+                 'pkill -f async_slam_toolbox_node 2>/dev/null; '
+                 'pkill -f slam_toolbox 2>/dev/null; '
+                 'sleep 0.5; '
+                 'rm -f /dev/shm/fastrtps_port*; '
+                 'true'],
+            output='screen',
+            name='pre_launch_cleanup',
+        ),
 
         # ── Arguments ──────────────────────────────────────────────────────
         DeclareLaunchArgument("map",
