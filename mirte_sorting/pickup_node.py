@@ -93,7 +93,9 @@ class PickupNode(Node):
             self.gripper = GripperInterface(
                 node=self,
                 gripper_joint_names=["gripper_joint"],
-                group_name="gripper"
+                open_gripper_joint_positions=[0.04],
+                closed_gripper_joint_positions=[0.0],
+                gripper_group_name="gripper"
             )
 
 

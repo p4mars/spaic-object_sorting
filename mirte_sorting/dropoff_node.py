@@ -50,7 +50,9 @@ class DropoffNode(Node):
             self.gripper = GripperInterface(
                 node=self,
                 gripper_joint_names=["gripper_joint"],
-                group_name="gripper"
+                open_gripper_joint_positions=[0.04],
+                closed_gripper_joint_positions=[0.0],
+                gripper_group_name="gripper"
             )
 
 
@@ -89,29 +91,45 @@ class DropoffNode(Node):
 
         try:
             # Extend arm to drop-off position above the bin
-            drop = PoseStamped()
-            drop.header.frame_id = "base_link"
-            drop.pose.position.x = 0.25
-            drop.pose.position.y = 0.0
-            drop.pose.position.z = 0.10
-            drop.pose.orientation.w = 1.0
+            # drop = PoseStamped()
+            # drop.header.frame_id = "base_link"
+            # drop.pose.position.x = 0.25
+            # drop.pose.position.y = 0.0
+            # drop.pose.position.z = 0.10
+            # drop.pose.orientation.w = 1.0
 
-            self.arm.set_pose_goal(drop.pose)
-            self.arm.execute()
+            # self.arm.set_pose_goal(drop.pose)
+            # self.arm.execute()
 
-            # Release object
+            # # Release object
+            # self.gripper.open()
+
+            # # Retract to neutral pose
+            # retract = PoseStamped()
+            # retract.header.frame_id = "base_link"
+            # retract.pose.position.x = 0.10
+            # retract.pose.position.y = 0.0
+            # retract.pose.position.z = 0.10
+            # retract.pose.orientation.w = 1.0
+
+            # self.arm.set_pose_goal(retract.pose)
+            # self.arm.execute()
+
+            self.arm.move_to_pose(
+                position=(0.25, 0.0, 0.10),
+                quat_xyzw=(0.0,0.0,0.0,0.1),
+                frame_id="base_link",
+            )
+            self.arm.wait_until_executed()
             self.gripper.open()
 
-            # Retract to neutral pose
-            retract = PoseStamped()
-            retract.header.frame_id = "base_link"
-            retract.pose.position.x = 0.10
-            retract.pose.position.y = 0.0
-            retract.pose.position.z = 0.10
-            retract.pose.orientation.w = 1.0
+            self.arm.move_to_pose(
+                position=(0.1, 0.0, 0.10),
+                quat_xyzw=(0.0, 0.0, 0.0, 0.1),
+                frame_id="base_link",
+            )
+            self.arm.wait_until_executed()
 
-            self.arm.set_pose_goal(retract.pose)
-            self.arm.execute()
 
             self.drop_done_pub.publish(Bool(data=True))
             self.get_logger().info("Drop successful.")
