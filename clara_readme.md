@@ -5,6 +5,23 @@ from startup checks through sending test goals and reading the costmaps.
 
 ---
 
+## Before every launch — mandatory steps
+
+```bash
+# 1. Rebuild after any code or YAML change
+cd ~/mirte_ws
+colcon build --packages-select mirte_sorting
+source install/setup.bash
+
+# 2. Clean up stale shared memory (prevents RTPS_TRANSPORT_SHM port errors)
+sudo rm -rf /dev/shm/fastrtps_*
+```
+
+If you skip the rebuild, the robot runs old installed binaries and your changes have no effect.  
+The `RTPS_TRANSPORT_SHM Error: Failed init_port` warnings in the log are caused by stale shared memory from a previous crashed launch — they don't break comms but slow DDS startup significantly.
+
+---
+
 ## What Nav2 needs before it will work
 
 | Requirement | Topic / Service | How to check |
@@ -291,6 +308,10 @@ Key values in `config/nav2_params.yaml`:
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
+| `Couldn't initialize state machine for node local_costmap` | Duplicate `bt_navigator` node (two processes with same name) | Make sure only one bt_navigator runs — nav2_bringup already starts it |
+| `Couldn't initialize state machine for node global_costmap` | Same as above (planner_server's costmap fails) | Same fix — remove any extra bt_navigator from your launch file |
+| `RTPS_TRANSPORT_SHM Error: Failed init_port` (spammed) | Stale shared memory from previous crashed launch | `sudo rm -rf /dev/shm/fastrtps_*` then relaunch |
+| Changes have no effect / wrong log messages | Package not rebuilt after editing | `colcon build --packages-select mirte_sorting && source install/setup.bash` |
 | `Waiting for service controller_server/get_state` forever | `controller_server` crashed on startup | Check nav2_params.yaml for YAML syntax errors |
 | `Waiting for service map_server/get_state` forever | Map file path wrong or file missing | Check `map:=` argument points to a real `.yaml` file |
 | `Waiting for service behavior_server/get_state` forever | behavior_server crashed | Verify `behavior_plugins` names match installed Nav2 version |
