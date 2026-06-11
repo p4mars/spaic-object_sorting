@@ -54,7 +54,7 @@ This starts a fake robot (`mock_mirte_base`) that publishes odometry, TF and an 
 
 
 
-## Things that has to be implemented to integration with SLAM, localisationa and YOLO
+## Things that has to be implemented to integrate with SLAM, localisation and YOLO
 
 - **No SLAM or AMCL**: the global frame is `odom`, not `map`. The robot has no global map and cannot recover from positional drift. SLAM Toolbox and AMCL needs to be added later and change `global_frame` to `map` in `nav2_odom_only.yaml`.
 - **No obstacle avoidance**: the obstacle layer is disabled since no lidar is used for navigation in this demo. Only the inflation layer is active.
