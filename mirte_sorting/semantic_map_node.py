@@ -81,8 +81,14 @@ class SemanticMapNode(Node):
                 "frame": child_frame,
                 "x": float(t.x),
                 "y": float(t.y),
+                "z": float(t.z),          
+                "qx": float(q.x),         
+                "qy": float(q.y),
+                "qz": float(q.z),
+                "qw": float(q.w),
                 "yaw": float(_yaw_from_quaternion(q)),
             })
+
 
     def _handle_save(self, _, response):
         payload = {"stations": {}, "drop_boxes": {}}

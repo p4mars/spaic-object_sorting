@@ -283,7 +283,7 @@ class PerceptionNode(Node):
 
         x, y, z = target["pos"]
         class_name = target["class"]
-        self.get_logger().info(f"Target depth: {z/1000:.3f} m  camera xyz=({x:.3f},{y:.3f},{z:.3f})")
+        self.get_logger().info(f"Target depth: {z*100:.1f} cm  camera local xyz=({x:.3f},{y:.3f},{z:.3f})")
 
         # Transform from camera depth frame to map frame
         point_cam = PointStamped()
@@ -302,6 +302,7 @@ class PerceptionNode(Node):
             point_map = point_cam
 
         bx, by, bz = point_map.point.x, point_map.point.y, point_map.point.z
+        self.get_logger().info(f"Global map xyz=({bx:.3f},{by:.3f},{bz:.3f})")
 
         rx, ry = self.current_x, self.current_y
         dx, dy = bx - rx, by - ry
