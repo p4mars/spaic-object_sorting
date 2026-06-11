@@ -297,7 +297,7 @@ class PerceptionNode(Node):
                 timeout=rclpy.duration.Duration(seconds=0.5))
         except Exception as e:
             self.get_logger().warn(f"TF camera→map failed: {e}")
-            return
+            point_map = point_cam
 
         bx, by, bz = point_map.point.x, point_map.point.y, point_map.point.z
 

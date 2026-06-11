@@ -1,0 +1,47 @@
+cmake_minimum_required(VERSION 3.8)
+project(mirte_sorting)
+
+# Default to C++17
+if(NOT CMAKE_CXX_STANDARD)
+  set(CMAKE_CXX_STANDARD 17)
+endif()
+
+# Find dependencies
+find_package(ament_cmake REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(rclcpp_action REQUIRED)
+find_package(std_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(trajectory_msgs REQUIRED)
+find_package(control_msgs REQUIRED)
+find_package(kdl_parser REQUIRED)
+find_package(orocos_kdl REQUIRED)
+
+# Executable
+add_executable(move_arm src/move_arm.cpp)
+
+# Link libraries
+ament_target_dependencies(move_arm
+  rclcpp
+  rclcpp_action
+  std_msgs
+  sensor_msgs
+  geometry_msgs
+  trajectory_msgs
+  control_msgs
+  kdl_parser
+  orocos-kdl
+)
+
+# Install target
+install(TARGETS move_arm
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+# Install launch files if you have them
+install(DIRECTORY launch
+  DESTINATION share/${PROJECT_NAME}
+)
+
+ament_package()

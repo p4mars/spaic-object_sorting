@@ -50,6 +50,6 @@ def pick_best(fused):
     for item in fused:
         x, y, z = item["pos"]
         dist = np.sqrt(x ** 2 + y ** 2 + z ** 2)
-        score = (4 * (1.0 / (dist + 1e-6))) + item["conf"] + 3 * item["occurrences"]
+        score = (4 * (1.0 / (dist + 1e-6))) + 2 * item["conf"] + 1 * item["occurrences"]
         scores.append(score)
     return fused[int(np.argmax(scores))]
