@@ -1,0 +1,16 @@
+sort_mission_planner:
+  ros__parameters:
+    # Everything is in the odom frame. 
+    # Replace these poses with measured station/bin poses.
+    frame_id: odom
+    source_station: [1.00, 0.00, 0.0]
+    inspection_pose: [1.20, 0.00, 0.0]
+    bins:
+      heart: [2.00,  0.80, 1.57]
+      triangle: [2.00,  0.25, 1.57]
+      bolt: [2.00, -0.25, 1.57]
+      l_shape: [2.00, -0.80, 1.57]
+    return_home: [0.00, 0.00, 0.0]
+    object_queue: [heart, triangle, bolt, l_shape] # YOLO/shape classifier.
+    stop_between_goals: 1.0
+    navigation_timeout_sec: 90.0
