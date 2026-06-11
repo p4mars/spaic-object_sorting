@@ -1,3 +1,13 @@
+"""
+Launch file for the Nav2 navigation stack (without mission planner).
+
+Starts all Nav2 servers (controller, planner, behaviour, bt_navigator,
+smoother, waypoint follower and velocity smoother) managed by a lifecycle
+manager. Remaps /cmd_vel_smoothed to the MIRTE base controller topic.
+
+"""
+
+
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, GroupAction
 from launch.conditions import IfCondition
