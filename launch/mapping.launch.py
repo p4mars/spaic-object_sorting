@@ -27,7 +27,7 @@ Usage:
 """
 
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument
+from launch.actions import DeclareLaunchArgument, ExecuteProcess
 from launch.conditions import IfCondition
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import Node
@@ -49,6 +49,20 @@ def generate_launch_description():
     use_rtabmap_mapping  = LaunchConfiguration("use_rtabmap_mapping")
 
     return LaunchDescription([
+
+        # ── Pre-launch cleanup ─────────────────────────────────────────────
+        # Kill any stale nav2 / AMCL processes — if navigation.launch.py was
+        # left running it publishes map→odom via AMCL and conflicts with SLAM.
+        ExecuteProcess(
+            cmd=['bash', '-c',
+                 'pkill -f amcl 2>/dev/null; '
+                 'pkill -f map_server 2>/dev/null; '
+                 'sleep 0.5; '
+                 'rm -f /dev/shm/fastrtps_port*; '
+                 'true'],
+            output='screen',
+            name='pre_launch_cleanup',
+        ),
 
         DeclareLaunchArgument("use_odom_relay",
             default_value="true",

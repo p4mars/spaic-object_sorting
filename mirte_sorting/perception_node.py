@@ -32,6 +32,7 @@ from sensor_msgs.msg import Image
 from std_msgs.msg import Bool, String
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from tf2_ros import Buffer, TransformListener
+import tf2_geometry_msgs  # noqa: F401 — registers PointStamped with tf2
 
 from mirte_sorting import detection_functions as DF
 from mirte_sorting.interfaces import NAV_STATUS_TOPIC, STATUS_AT_SOURCE
@@ -242,11 +243,11 @@ class PerceptionNode(Node):
 
                     z_list.sort()
 
-                    z_mm, best_px = z_list[len(z_list) // 2]
+                    z_mm, best_px, best_py = z_list[len(z_list) // 2]
                     z = float(z_mm) / 1000.0
 
                     x = (best_px - self.cx_d) * (z / self.fx_d)
-                    y = (cy - self.cy_d) * (z / self.fy_d)
+                    y = (best_py - self.cy_d) * (z / self.fy_d)
 
                     class_id = int(boxes.cls[i].item())
                     class_name = result.names[class_id]
@@ -282,6 +283,7 @@ class PerceptionNode(Node):
 
         x, y, z = target["pos"]
         class_name = target["class"]
+        self.get_logger().info(f"Target depth: {z/1000:.3f} m  camera xyz=({x:.3f},{y:.3f},{z:.3f})")
 
         # Transform from camera depth frame to map frame
         point_cam = PointStamped()

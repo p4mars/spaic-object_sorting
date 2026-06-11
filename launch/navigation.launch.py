@@ -38,7 +38,8 @@ Usage:
 """
 
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.actions import (DeclareLaunchArgument, ExecuteProcess,
+                             IncludeLaunchDescription)
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
@@ -70,6 +71,20 @@ def generate_launch_description():
     use_apriltag_init   = LaunchConfiguration("use_apriltag_init")
 
     return LaunchDescription([
+
+        # ── Pre-launch cleanup ─────────────────────────────────────────────
+        # Kill any stale SLAM Toolbox process — if mapping.launch.py was left
+        # running it publishes map→odom and conflicts with AMCL here.
+        ExecuteProcess(
+            cmd=['bash', '-c',
+                 'pkill -f async_slam_toolbox_node 2>/dev/null; '
+                 'pkill -f slam_toolbox 2>/dev/null; '
+                 'sleep 0.5; '
+                 'rm -f /dev/shm/fastrtps_port*; '
+                 'true'],
+            output='screen',
+            name='pre_launch_cleanup',
+        ),
 
         # ── Arguments ──────────────────────────────────────────────────────
         DeclareLaunchArgument("map",
@@ -116,13 +131,13 @@ def generate_launch_description():
         ),
 
         # ── Velocity relay: Nav2 → MIRTE base controller ───────────────────
-        # Nav2 velocity_smoother publishes /cmd_vel_smoothed.
-        # MIRTE base controller subscribes to its own topic.
+        # In Nav2 Humble non-composition mode, velocity_smoother remaps
+        # cmd_vel_smoothed → cmd_vel, so the final output is on /cmd_vel.
         Node(
             package="topic_tools",
             executable="relay",
             name="cmd_vel_relay",
-            arguments=["/cmd_vel_smoothed",
+            arguments=["/cmd_vel",
                        "/mirte_base_controller/cmd_vel_unstamped"],
             output="screen",
         ),
