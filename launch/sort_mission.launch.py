@@ -6,9 +6,6 @@ and the sort_mission_planner node that executes the sorting mission.
 
 """
 
-
-
-
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, GroupAction, TimerAction
 from launch.conditions import IfCondition
