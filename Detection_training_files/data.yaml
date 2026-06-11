@@ -1,0 +1,9 @@
+#Use absolute paths to avoid errors
+
+path: C:\Users\ruben\PycharmProjects\GEO5017-A3-group1
+train: less-data-train800-valid200/trained/images
+val: less-data-train800-valid200/validation/images
+
+
+nc: 4
+names: ["Heart", "L-shape", "Triangle", "Hexagon"]
