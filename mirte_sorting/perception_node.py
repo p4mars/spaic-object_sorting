@@ -86,7 +86,7 @@ class PerceptionNode(Node):
         # Search / sweep state
         self.search_angle = 0
         self.search_direction = -1
-        self.search_limit = 40
+        self.search_limit = 20
         self.search_step = 21
         self.flipdir = 0
 
@@ -94,6 +94,8 @@ class PerceptionNode(Node):
         self.image_size = [640, 480]
         self.depth_fov = [58.4, 45.5]
         self.color_fov = [66.1, 40.2]
+
+        self.dis_0 = 400.0     # Distance in m that is the min distance of depth camera
 
         W, H = self.image_size
         self.fx_d = (W / 2.0) / np.tan(np.deg2rad(self.depth_fov[0] / 2.0))
@@ -184,6 +186,10 @@ class PerceptionNode(Node):
             self.source_empty_pub.publish(Bool(data=True))
             self.flipdir = 0
             self.active = False
+            twist = Twist()
+            twist.angular.z = 0.0
+            self.cmd_pub.publish(twist)
+            self.cmd_pub.publish(Twist())
             return None
         return self.search_angle
 
@@ -196,7 +202,11 @@ class PerceptionNode(Node):
         t0 = time.time()
         while time.time() - t0 < duration:
             self.cmd_pub.publish(twist)
+        twist = Twist()
+        twist.angular.z = 0.0
+        self.cmd_pub.publish(twist)
         self.cmd_pub.publish(Twist())
+        time.sleep(2.0)
 
     # ── Main detection loop ───────────────────────────────────────────────
 
@@ -244,7 +254,8 @@ class PerceptionNode(Node):
                     z_list.sort()
 
                     z_mm, best_px, best_py = z_list[len(z_list) // 2]
-                    z = float(z_mm) / 1000.0
+                    z_tot = z_mm + self.dis_0
+                    z = float(z_tot) / 1000.0
 
                     x = (best_px - self.cx_d) * (z / self.fx_d)
                     y = (best_py - self.cy_d) * (z / self.fy_d)
@@ -276,14 +287,23 @@ class PerceptionNode(Node):
             if angle is not None:
                 self.get_logger().info(f"No detections — sweeping {angle}°")
                 self._rotate_robot(angle)
+                twist = Twist()
+                twist.angular.z = 0.0
+                self.cmd_pub.publish(twist)
+                self.cmd_pub.publish(Twist())
             return
 
+        twist = Twist()
+        twist.angular.z = 0.0
+        self.cmd_pub.publish(twist)
+        self.cmd_pub.publish(Twist())
+        
         # Detection found — reset search state
         self._reset_search()
 
         x, y, z = target["pos"]
         class_name = target["class"]
-        self.get_logger().info(f"Target depth: {z*100:.1f} cm  camera local xyz=({x:.3f},{y:.3f},{z:.3f})")
+        self.get_logger().info(f"Target depth: {z*10:.1f} m  camera local xyz=({x:.3f},{y:.3f},{z:.3f})")
 
         # Transform from camera depth frame to map frame
         point_cam = PointStamped()
