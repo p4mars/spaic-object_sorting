@@ -188,7 +188,7 @@ class PerceptionNode(Node):
         return self.search_angle
 
     def _rotate_robot(self, angle_deg):
-        ANGULAR_SPEED = math.radians(10)
+        ANGULAR_SPEED = math.radians(100)
         angle_rad = math.radians(angle_deg)
         duration = abs(angle_rad) / ANGULAR_SPEED
         twist = Twist()
