@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+
 """Very small differential drive mock so Nav2 can be tested without Mirte hardware.
 
 It subscribes to cmd_vel, integrates a fake odom pose, broadcasts odom->base_link,
