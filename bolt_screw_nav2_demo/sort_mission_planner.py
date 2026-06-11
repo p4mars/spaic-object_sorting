@@ -1,5 +1,6 @@
 
-"""Mission-level navigation planner.
+"""
+Mission-level navigation planner.
 
 This node has no YOLO dependency. Needs to be integrated with the classifier from YOLO 
 (object_queue).
