@@ -1,4 +1,4 @@
-"""sort_mission.launch.py
+"""
 
 Main launch file which starts the full Nav2 navigation stack (controller, planner, behaviour server,
 BT navigator, velocity smoother and lifecycle manager), RViz for visualisation,
