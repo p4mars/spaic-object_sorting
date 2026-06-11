@@ -1,6 +1,6 @@
 # bolt_screw_nav2_demo
 
-This package handles the navigation and planning part of bolts and screws sorting project. It sends the robot to the right spots, pick-up area, correct bin, and back home by using Nav2.
+This package handles the navigation and planning part of bolts and screws sorting project. It sends the robot to the right spots, pick-up area, correct bin and back home by using Nav2.
 
 It is kept separate from the YOLO classifier, SLAM Toolbox and localisation (AMCL), so the navigation can be tested and demonstrated on its own. SLAM and AMCL need to be integrated later to provide the `map --> odom` transform and a global costmap. The YOLO classifier will replace the hardcoded `object_queue`.
 
