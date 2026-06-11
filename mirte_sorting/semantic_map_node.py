@@ -29,6 +29,10 @@ from tf2_ros import Buffer, TransformException, TransformListener
 
 
 def _yaw_from_quaternion(q) -> float:
+    """Extract planar yaw (rotation around Z) from a quaternion.
+    This uses the standard quaternion->Euler formula and returns radians
+    in [-pi, pi], which is what we store in the semantic map.
+    """
     siny_cosp = 2.0 * (q.w * q.z + q.x * q.y)
     cosy_cosp = 1.0 - 2.0 * (q.y * q.y + q.z * q.z)
     return math.atan2(siny_cosp, cosy_cosp)

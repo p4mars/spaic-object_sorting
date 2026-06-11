@@ -38,8 +38,12 @@ class CameraInfoSyncNode(Node):
         synced_camera_info_topic = self.get_parameter("synced_camera_info_topic").value
         self._use_image_frame_id = self.get_parameter("use_image_frame_id").value
 
+        # Cache the latest camera_info; on each image we stamp the cached
+        # info to match — not exact-time sync, but sufficient for a static camera.
         self._latest_info = None
 
+        # RELIABLE: don't drop messages (vs BEST_EFFORT which can skip frames)
+        # KEEP_LAST/depth=10: only buffer the 10 most recent messages
         qos = QoSProfile(
             reliability=ReliabilityPolicy.RELIABLE,
             history=HistoryPolicy.KEEP_LAST,
@@ -57,6 +61,7 @@ class CameraInfoSyncNode(Node):
             f"→ {synced_image_topic}")
 
     def _info_cb(self, msg: CameraInfo):
+        # Just cache the latest info; images drive the pipeline
         self._latest_info = msg
 
     def _image_cb(self, image_msg: Image):
@@ -67,9 +72,13 @@ class CameraInfoSyncNode(Node):
             return
 
         synced_image = copy.deepcopy(image_msg)
+        # deepcopy so we don't mutate the cached _latest_info when we re-stamp it
         synced_info = copy.deepcopy(self._latest_info)
         synced_info.header.stamp = synced_image.header.stamp
         if self._use_image_frame_id:
+            # If True, overwrite camera_info's frame_id with the image's frame_id.
+            # Set to False only if your camera driver publishes them under different
+            # frame IDs intentionally.
             synced_info.header.frame_id = synced_image.header.frame_id
 
         self._image_pub.publish(synced_image)
