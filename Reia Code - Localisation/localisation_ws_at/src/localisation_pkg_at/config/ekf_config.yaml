@@ -1,0 +1,53 @@
+ekf_filter_node:
+  ros__parameters:
+    # coordinate frames
+    map_frame: map
+    odom_frame: odom
+    base_link_frame: base_link
+    world_frame: odom
+
+    # sensor inputs
+    odom0: /mirte_base_controller/odom
+    imu0:  /io/imu/movement/data
+
+    # [x, y, z,
+    # roll, pitch, yaw,
+    # vx, vy, vz,
+    # vroll, vpitch, vyaw,
+    # ax, ay, az]
+
+
+    # odometer config
+    odom0_config: [false, false, false,
+                   false, false, false,
+                   true, true, false,
+                   false, false, true,
+                   false, false, false]
+    # --> basically we are extracting vel_x, vel_y, vel_yaw
+
+    odom0_relative: false
+    # odom0_relative: uses the IMU’s change from its initial reading, rather than treating its initial orientation as an
+    #                 absolute global heading. not req as we ain't gonna use yaw
+
+    # imu config
+    imu0_config: [false, false, false,
+                  false, false, false,
+                  false, false, false,
+                  false, false, true,
+                  false, false, false]
+    # --> basically we are extracting vel_yaw
+    imu0_relative: true
+    imu0_remove_gravitational_acceleration: true
+
+    # filter settings
+    frequency: 5.0 #hz (update time)
+    process_noise_covariance: [0.05, 0.00, 0.00, 0.00, 0.00, 0.00,
+                               0.00, 0.05, 0.00, 0.00, 0.00, 0.00,
+                               0.00, 0.00, 0.06, 0.00, 0.00, 0.00,
+                               0.00, 0.00, 0.00, 0.03, 0.00, 0.00,
+                               0.00, 0.00, 0.00, 0.00, 0.03, 0.00,
+                               0.00, 0.00, 0.00, 0.00, 0.00, 0.06]
+
+    # x, y, yaw, vx, vy, vyaw - are the diagonal elements --> i set a nominal uncertainty value for all params however
+    # vx, vy have lower vals cause we get em via wheel odom
+    print_diagnostics: true

@@ -1,0 +1,39 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>localisation_pkg</name>
+  <version>0.0.1</version>
+  <description>creating the localisation package for mirte to determine its current position</description>
+  <maintainer email="reia.ramkumar.nl@gmail.com">reiaramkumar</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>ament_python</buildtool_depend>
+  <depend>rclpy</depend>
+  <depend>geometry_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>std_msgs</depend>
+  <depend>sensor_msgs</depend>
+
+ <!-- additional dependencies  -->
+  <!-- amcl  -->
+  <depend>nav2_amcl</depend>
+  <depend>nav2_map_server</depend>
+  <depend>nav2_lifecycle_manager</depend>
+  <depend>nav2_bringup</depend>
+  <!-- ekf  -->
+  <depend>robot_localization</depend>
+  <!-- transformations  -->
+  <depend>tf2_ros</depend>
+  <!-- apriltag pose correction  -->
+  <depend>tf2_geometry_msgs</depend>
+
+  <test_depend>ament_copyright</test_depend>
+  <test_depend>ament_flake8</test_depend>
+  <test_depend>ament_pep257</test_depend>
+  <test_depend>python3-pytest</test_depend>
+
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>
