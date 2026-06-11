@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+
 """Mission-level navigation planner.
 
 This node has no YOLO dependency. Needs to be integrated with the classifier from YOLO 
