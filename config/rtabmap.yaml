@@ -29,7 +29,7 @@ rtabmap:
     Mem/IncrementalMemory: "false"
     Mem/InitWMWithAllNodes: "true"
 
-    database_path: "/home/mirte/rtabmap.db"
+    # database_path is passed as a launch argument (see mapping/navigation.launch.py)
 
     # Matching strategy: visual (PnP)
     Reg/Strategy: "0"

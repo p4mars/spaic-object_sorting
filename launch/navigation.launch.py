@@ -24,17 +24,23 @@ Perception / arm:
   - Mission planner
 
 Usage:
-  ros2 launch mirte_sorting navigation.launch.py map:=/home/mirte/sorting_map.yaml
+  ros2 launch mirte_sorting navigation.launch.py
+
+  With a custom map:
+  ros2 launch mirte_sorting navigation.launch.py map:=/custom/path/sorting_map.yaml
 
   With RTAB-Map visual localisation:
-  ros2 launch mirte_sorting navigation.launch.py \\
-    map:=/home/mirte/sorting_map.yaml use_rtabmap:=true
+  ros2 launch mirte_sorting navigation.launch.py use_rtabmap:=true
 
   With AprilTag auto-start:
   ros2 launch mirte_sorting navigation.launch.py \\
-    map:=/home/mirte/sorting_map.yaml \\
     use_apriltag_init:=true home_tag_id:=0 \\
     home_tag_map_x:=0.0 home_tag_map_y:=0.0 home_tag_map_yaw:=0.0
+
+  Override map/database paths:
+  ros2 launch mirte_sorting navigation.launch.py \\
+    map:=/custom/path/sorting_map.yaml \\
+    rtabmap_db:=/custom/path/rtabmap.db
 """
 
 from launch import LaunchDescription
@@ -59,6 +65,8 @@ def generate_launch_description():
     station_params = PathJoinSubstitution([pkg, "config", "station_locations.yaml"])
     apriltag_cfg   = PathJoinSubstitution([pkg, "config", "apriltag.yaml"])
     semantic_cfg   = PathJoinSubstitution([pkg, "config", "semantic_map_config.yaml"])
+    maps_dir       = PathJoinSubstitution([pkg, "maps"])
+    bt_nav_xml     = PathJoinSubstitution([pkg, "behavior_trees", "nav_to_pose_simple.xml"])
     rviz_cfg       = PathJoinSubstitution([
         FindPackageShare("nav2_bringup"), "rviz", "nav2_default_view.rviz"])
 
@@ -68,6 +76,7 @@ def generate_launch_description():
     use_odom_relay      = LaunchConfiguration("use_odom_relay")
     publish_compat_tfs  = LaunchConfiguration("publish_compat_tfs")
     use_rtabmap         = LaunchConfiguration("use_rtabmap")
+    rtabmap_db          = LaunchConfiguration("rtabmap_db")
     use_apriltag_init   = LaunchConfiguration("use_apriltag_init")
 
     return LaunchDescription([
@@ -88,6 +97,7 @@ def generate_launch_description():
 
         # ── Arguments ──────────────────────────────────────────────────────
         DeclareLaunchArgument("map",
+            default_value=PathJoinSubstitution([maps_dir, "sorting_map.yaml"]),
             description="Full path to saved map YAML. "
                         "Build first with: ros2 launch mirte_sorting mapping.launch.py"),
         DeclareLaunchArgument("use_sim_time",       default_value="false"),
@@ -99,7 +109,10 @@ def generate_launch_description():
         DeclareLaunchArgument("use_odom_relay",     default_value="true"),
         DeclareLaunchArgument("publish_compat_tfs", default_value="true"),
         DeclareLaunchArgument("use_rtabmap",        default_value="false",
-            description="Enable RTAB-Map visual localisation (needs /home/mirte/rtabmap.db)"),
+            description="Enable RTAB-Map visual localisation"),
+        DeclareLaunchArgument("rtabmap_db",
+            default_value=PathJoinSubstitution([maps_dir, "rtabmap.db"]),
+            description="Path to RTAB-Map visual database (used when use_rtabmap:=true)"),
         DeclareLaunchArgument("use_apriltag_init",  default_value="false",
             description="Auto-detect start pose from a home AprilTag"),
         DeclareLaunchArgument("home_tag_id",        default_value="0",
@@ -121,12 +134,14 @@ def generate_launch_description():
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(nav2_bringup_launch),
             launch_arguments={
-                "slam":            "False",
-                "map":             LaunchConfiguration("map"),
-                "use_sim_time":    use_sim_time,
-                "autostart":       LaunchConfiguration("autostart"),
-                "params_file":     LaunchConfiguration("params_file"),
-                "use_composition": "False",
+                "slam":                          "False",
+                "map":                           LaunchConfiguration("map"),
+                "use_sim_time":                  use_sim_time,
+                "autostart":                     LaunchConfiguration("autostart"),
+                "params_file":                   LaunchConfiguration("params_file"),
+                "use_composition":               "False",
+                "default_nav_to_pose_bt_xml":    bt_nav_xml,
+                "default_nav_through_poses_bt_xml": bt_nav_xml,
             }.items(),
         ),
 
@@ -182,7 +197,7 @@ def generate_launch_description():
             executable="rtabmap",
             name="rtabmap",
             output="screen",
-            parameters=[rtabmap_params],
+            parameters=[rtabmap_params, {"database_path": rtabmap_db}],
             remappings=[
                 ("rgb/image",       "/camera/color/image_raw"),
                 ("rgb/camera_info", "/camera/color/camera_info"),

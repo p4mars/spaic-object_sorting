@@ -6,7 +6,7 @@ STEP 1: Build the arena map before demo day.
 Starts:
   - robot_localization EKF      — fuses /odom + /imu → /odometry/filtered
   - SLAM Toolbox (online async) — builds the 2-D occupancy grid map (/map)
-  - RTAB-Map SLAM (optional)    — builds visual database (/home/mirte/rtabmap.db)
+  - RTAB-Map SLAM (optional)    — builds visual database (see rtabmap_db arg)
     Pass use_rtabmap_mapping:=true to enable alongside SLAM Toolbox.
     RTAB-Map runs with publish_tf:=false so it does not conflict with SLAM Toolbox.
   - AprilTag + CameraInfoSync   — detect station/bin tags during mapping
@@ -17,13 +17,19 @@ Starts:
 When done driving:
   ros2 service call /save_semantic_map std_srvs/srv/Trigger
   ros2 service call /slam_toolbox/save_map slam_toolbox/srv/SaveMap \\
-    "{name: {data: '/home/mirte/sorting_map'}}"
+    "{name: {data: '<map_save_path>'}}"
+  (map_save_path defaults to <pkg_share>/maps/sorting_map)
 
 Usage:
   ros2 launch mirte_sorting mapping.launch.py
 
   Also build RTAB-Map visual database:
   ros2 launch mirte_sorting mapping.launch.py use_rtabmap_mapping:=true
+
+  Override save locations:
+  ros2 launch mirte_sorting mapping.launch.py \\
+    rtabmap_db:=/custom/path/rtabmap.db \\
+    map_save_path:=/custom/path/sorting_map
 """
 
 from launch import LaunchDescription
@@ -43,10 +49,14 @@ def generate_launch_description():
     apriltag_cfg   = PathJoinSubstitution([pkg, "config", "apriltag.yaml"])
     semantic_cfg   = PathJoinSubstitution([pkg, "config", "semantic_map_config.yaml"])
 
+    maps_dir = PathJoinSubstitution([pkg, "maps"])
+
     use_odom_relay       = LaunchConfiguration("use_odom_relay")
     publish_compat_tfs   = LaunchConfiguration("publish_compat_tfs")
     use_sim_time         = LaunchConfiguration("use_sim_time")
     use_rtabmap_mapping  = LaunchConfiguration("use_rtabmap_mapping")
+    rtabmap_db           = LaunchConfiguration("rtabmap_db")
+    map_save_path        = LaunchConfiguration("map_save_path")
 
     return LaunchDescription([
 
@@ -74,7 +84,13 @@ def generate_launch_description():
             default_value="false"),
         DeclareLaunchArgument("use_rtabmap_mapping",
             default_value="false",
-            description="Also run RTAB-Map SLAM to build /home/mirte/rtabmap.db"),
+            description="Also run RTAB-Map SLAM to build the visual database"),
+        DeclareLaunchArgument("rtabmap_db",
+            default_value=PathJoinSubstitution([maps_dir, "rtabmap.db"]),
+            description="Path to write the RTAB-Map visual database"),
+        DeclareLaunchArgument("map_save_path",
+            default_value=PathJoinSubstitution([maps_dir, "sorting_map"]),
+            description="Save prefix for SLAM Toolbox map (no extension)"),
 
         # ── EKF: fuses /odom + /imu → /odometry/filtered ──────────────────
         # SLAM Toolbox benefits from the smoothed odometry for scan matching.
@@ -108,7 +124,8 @@ def generate_launch_description():
                 rtabmap_params,
                 {"Mem/IncrementalMemory": "true",
                  "Mem/InitWMWithAllNodes": "false",
-                 "publish_tf": False},
+                 "publish_tf": False,
+                 "database_path": rtabmap_db},
             ],
             remappings=[
                 ("rgb/image",       "/camera/color/image_raw"),

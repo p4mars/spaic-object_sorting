@@ -23,6 +23,7 @@ from collections import defaultdict, deque
 
 import rclpy
 import yaml
+from ament_index_python.packages import get_package_share_directory
 from rclpy.node import Node
 from std_srvs.srv import Trigger
 from tf2_ros import Buffer, TransformException, TransformListener
@@ -44,7 +45,7 @@ class SemanticMapNode(Node):
         super().__init__("semantic_map_node")
 
         self.declare_parameter("map_frame", "map")
-        self.declare_parameter("save_path", "src/spaic-object_sorting/maps/semantic_map.yaml")
+        self.declare_parameter("save_path", "")
         self.declare_parameter("sample_window", 10)
         self.declare_parameter("time_interval", 0.2)
         self.declare_parameter("tag_names", [
@@ -53,7 +54,11 @@ class SemanticMapNode(Node):
         ])
 
         self._map_frame = self.get_parameter("map_frame").value
-        self._save_path = self.get_parameter("save_path").value
+        save_path = self.get_parameter("save_path").value
+        if not save_path:
+            save_path = os.path.join(
+                get_package_share_directory("mirte_sorting"), "maps", "semantic_map.yaml")
+        self._save_path = save_path
         self._window = int(self.get_parameter("sample_window").value)
         self._interval = self.get_parameter("time_interval").value
 
