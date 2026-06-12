@@ -15,10 +15,11 @@ Covers the full pipeline: **shape detection → AprilTag localisation → SLAM m
 5. [Configuration](#5-configuration)
 6. [Step 1 — Mapping Session](#6-step-1--mapping-session)
 7. [Step 2 — Autonomous Sorting Mission](#7-step-2--autonomous-sorting-mission)
-8. [Testing Without the Real Robot](#8-testing-without-the-real-robot)
-9. [Topic Contract (Inter-node Interface)](#9-topic-contract-inter-node-interface)
-10. [Troubleshooting](#10-troubleshooting)
-11. [File Reference](#11-file-reference)
+8. [Navigation and Planning Demo]
+9. [Testing Without the Real Robot](#8-testing-without-the-real-robot)
+10. [Topic Contract (Inter-node Interface)](#9-topic-contract-inter-node-interface)
+11. [Troubleshooting](#10-troubleshooting)
+12. [File Reference](#11-file-reference)
 
 ---
 
