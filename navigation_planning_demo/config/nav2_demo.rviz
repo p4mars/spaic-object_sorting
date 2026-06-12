@@ -1,0 +1,96 @@
+Panels:
+  - Class: rviz_common/Displays
+    Name: Displays
+  - Class: rviz_common/Views
+    Name: Views
+Visualization Manager:
+  Displays:
+    - Class: rviz_default_plugins/Grid
+      Name: Grid
+      Enabled: true
+      Cell Size: 1
+      Color: 160; 160; 164
+      Line Style:
+        Line Width: 0.029999999329447746
+        Value: Lines
+      Normal Cell Count: 0
+      Offset:
+        X: 0
+        Y: 0
+        Z: 0
+      Plane: XY
+      Plane Cell Count: 10
+    - Class: rviz_default_plugins/RobotModel
+      Name: RobotModel
+      Enabled: false
+    - Alpha: 1
+      Class: rviz_default_plugins/Map
+      Color Scheme: map
+      Draw Behind: false
+      Enabled: true
+      Name: Global Costmap
+      Topic:
+        Value: /global_costmap/costmap
+      Update Topic:
+        Value: /global_costmap/costmap_updates
+    - Alpha: 0.7
+      Class: rviz_default_plugins/Map
+      Color Scheme: costmap
+      Draw Behind: false
+      Enabled: true
+      Name: Local Costmap
+      Topic:
+        Value: /local_costmap/costmap
+      Update Topic:
+        Value: /local_costmap/costmap_updates
+    - Class: rviz_default_plugins/Path
+      Color: 0; 200; 0
+      Enabled: true
+      Name: Global Plan
+      Topic:
+        Value: /plan
+    - Class: rviz_default_plugins/Path
+      Color: 0; 0; 255
+      Enabled: true
+      Name: Local Plan
+      Topic:
+        Value: /local_plan
+    - Class: rviz_default_plugins/Odometry
+      Enabled: true
+      Name: Odometry
+      Topic:
+        Value: /mirte_base_controller/odom
+      Keep: 100
+      Shape:
+        Alpha: 1
+        Axes Length: 0.3
+        Axes Radius: 0.05
+    - Class: rviz_default_plugins/LaserScan
+      Color: 255; 0; 0
+      Enabled: true
+      Name: LaserScan
+      Topic:
+        Value: /scan
+      Size (m): 0.05
+    - Class: rviz_default_plugins/TF
+      Enabled: true
+      Name: TF
+      Show Arrows: true
+      Show Axes: true
+      Show Names: true
+      Marker Scale: 0.5
+  Global Options:
+    Background Color: 48; 48; 48
+    Fixed Frame: odom
+    Frame Rate: 30
+  Tools:
+    - Class: rviz_default_plugins/Interact
+    - Class: rviz_default_plugins/MoveCamera
+    - Class: rviz_default_plugins/Select
+  Value: true
+  Views:
+    Current:
+      Class: rviz_default_plugins/TopDownOrtho
+      Scale: 100
+      X: 1.5
+      Y: 0
