@@ -26,6 +26,7 @@ import yaml
 from rclpy.node import Node
 from std_srvs.srv import Trigger
 from tf2_ros import Buffer, TransformException, TransformListener
+from visualization_msgs.msg import Marker, MarkerArray
 
 
 def _yaw_from_quaternion(q) -> float:
@@ -44,8 +45,8 @@ class SemanticMapNode(Node):
 
         self.declare_parameter("map_frame", "map")
         self.declare_parameter("save_path", "src/spaic-object_sorting/maps/semantic_map.yaml")
-        self.declare_parameter("sample_window", 15)
-        self.declare_parameter("time_interval", 0.5)
+        self.declare_parameter("sample_window", 10)
+        self.declare_parameter("time_interval", 0.2)
         self.declare_parameter("tag_names", [
             "1:station_1", "2:station_2",
             "10:dropbox_1", "11:dropbox_2", "12:dropbox_3", "13:dropbox_4",
@@ -65,6 +66,12 @@ class SemanticMapNode(Node):
         self._tf_listener = TransformListener(self._tf_buffer, self)
         self._samples: dict = defaultdict(lambda: deque(maxlen=self._window))
 
+        # Create a empty dict to trach the tags that have been published
+        self._published_tags: dict[str, dict] = {}
+        # Publisher for the visualized markers
+        self._marker_pub = self.create_publisher(MarkerArray, "semantic_map_markers", 10)
+
+        # Start the periodic collection of tag poses
         self.create_timer(self._interval, self._collect)
         self.create_service(Trigger, "save_semantic_map", self._handle_save)
         self.get_logger().info(
@@ -93,22 +100,101 @@ class SemanticMapNode(Node):
                 "yaw": float(_yaw_from_quaternion(q)),
             })
 
+            # Check if the frame have enough samples and have not been published yet
+            samples = self._samples[label]
+            if label not in self._published_tags and len(samples) >= self._window:
+                n = len(samples)
+                avg_x   = sum(s["x"]  for s in samples) / n
+                avg_y   = sum(s["y"]  for s in samples) / n
+                avg_z   = sum(s["z"]  for s in samples) / n
+                avg_yaw = sum(s["yaw"] for s in samples) / n
+                avg_qx  = sum(s["qx"] for s in samples) / n
+                avg_qy  = sum(s["qy"] for s in samples) / n
+                avg_qz  = sum(s["qz"] for s in samples) / n
+                avg_qw  = sum(s["qw"] for s in samples) / n
+                norm = math.sqrt(avg_qx**2 + avg_qy**2 + avg_qz**2 + avg_qw**2)
+                avg_qx /= norm
+                avg_qy /= norm
+                avg_qz /= norm
+                avg_qw /= norm
+                # Project the tag's local Z axis onto the map XY plane to get a 2D arrow yaw
+                zx = 2.0 * (avg_qx * avg_qz + avg_qy * avg_qw)
+                zy = 2.0 * (avg_qy * avg_qz - avg_qx * avg_qw)
+                z_yaw = math.atan2(zy, zx)
+                self._publish_marker(tag_id, label, avg_x, avg_y, avg_z, z_yaw)
+                self._published_tags[label] = {
+                    "tag_id": tag_id,
+                    "frame": child_frame,
+                    "pose": {"x": avg_x, "y": avg_y, "yaw": avg_yaw},
+                    "samples": n,
+                }
+                self.get_logger().info(f"Tag '{label}' locked in from {n} samples.")
+
+
+    def _publish_marker(self, tag_id, label, x, y, z, yaw):
+        """Publish a visualization marker for the given tag pose.
+        The markers are published in the map frame,
+        rotation is shown with arrows and only in the planar yaw angle, 
+        and the label is shown as text above the tag."""
+
+        stamp = self.get_clock().now().to_msg()
+        array = MarkerArray()
+        qz = math.sin(yaw / 2.0)
+        qw = math.cos(yaw / 2.0)
+
+        # Add an arrow marker to show the orientation of the tag
+        arrow = Marker()
+        arrow.header.frame_id = self._map_frame
+        arrow.header.stamp = stamp
+        arrow.ns = "semantic_map"
+        arrow.id = tag_id
+        arrow.type = Marker.ARROW
+        arrow.action = Marker.ADD
+        arrow.pose.position.x = x
+        arrow.pose.position.y = y
+        arrow.pose.position.z = z
+        arrow.pose.orientation.x = 0.0
+        arrow.pose.orientation.y = 0.0
+        arrow.pose.orientation.z = qz
+        arrow.pose.orientation.w = qw
+        arrow.scale.x = 0.3   # shaft length
+        arrow.scale.y = 0.05  # shaft diameter
+        arrow.scale.z = 0.08  # head diameter
+        arrow.color.r = 0.0
+        arrow.color.g = 0.8
+        arrow.color.b = 0.2
+        arrow.color.a = 0.9
+        arrow.lifetime.sec = 0
+        arrow.lifetime.nanosec = 0
+        array.markers.append(arrow)
+
+        # Add a text marker above the cube to show the label
+        text = Marker()
+        text.header.frame_id = self._map_frame
+        text.header.stamp = stamp
+        text.ns = "semantic_map_labels"
+        text.id = tag_id
+        text.type = Marker.TEXT_VIEW_FACING
+        text.action = Marker.ADD
+        text.pose.position.x = x
+        text.pose.position.y = y
+        text.pose.position.z = z + 0.15
+        text.pose.orientation.w = 1.0
+        text.scale.z = 0.08
+        text.color.r = text.color.g = text.color.b = 1.0
+        text.color.a = 1.0
+        text.text = label
+        text.lifetime.sec = 0
+        text.lifetime.nanosec = 0
+        array.markers.append(text)
+
+        self.get_logger().info(
+            f"publish marker. Tag: {label}, x: {x:.2f}, y: {y:.2f}, z: {z:.2f}, yaw: {math.degrees(yaw):.1f}°")
+        self._marker_pub.publish(array)
 
     def _handle_save(self, _, response):
         payload = {"stations": {}, "drop_boxes": {}}
-        for label, values in self._samples.items():
-            if not values:
-                continue
-            n = len(values)
-            x = sum(v["x"] for v in values) / n
-            y = sum(v["y"] for v in values) / n
-            yaw = sum(v["yaw"] for v in values) / n
-            entry = {
-                "tag_id": values[-1]["tag_id"],
-                "frame": values[-1]["frame"],
-                "pose": {"x": x, "y": y, "yaw": yaw},
-                "samples": n,
-            }
+        for label, entry in self._published_tags.items():
             if label.startswith("station"):
                 payload["stations"][label] = entry
             else:
