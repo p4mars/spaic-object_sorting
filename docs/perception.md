@@ -31,11 +31,60 @@ Clustering/fusion helpers: `detection_functions.py`
 Class names are lowercased in `TeamBridge._class_cb()`. They must otherwise match
 the `bins:` keys in [`station_locations.yaml`](configuration.md#station_locationsyaml).
 
-### YOLO model
+## YOLO model
 
-Place `best.pt` on the robot (bundled at `models/best.pt`) or pass
-`model_path:=/abs/path/best.pt`. Training artefacts are in
-`archive/Detection_training_files/`.
+Place the trained YOLO model at:
+
+```bash
+models/best.pt
+```
+
+or launch with an explicit path:
+
+```bash
+model_path:=/absolute/path/to/best.pt
+```
+
+Training files are stored in:
+
+```bash
+archive/Detection_training_files/
+```
+
+## YOLO Python environment
+
+The YOLO nodes use a separate virtual environment because `ultralytics` requires `numpy>=1.23`, while ROS 2 Humble must stay on NumPy 1.x. Do **not** let `pip` install NumPy 2.x, since this can break ROS modules such as `cv_bridge`.
+
+Install YOLO dependencies inside the `yolo_ros` venv with:
+
+```bash
+pip install "numpy>=1.23,<2" ultralytics
+```
+
+Before running the perception nodes, make sure user-site packages do not override the venv:
+
+```bash
+export PYTHONNOUSERSITE=1
+```
+
+After each `colcon build`, rewrite the installed executable shebang so `ros2 run` uses the venv Python:
+
+```bash
+sed -i '1s|.*|#!/absolute/path/to/venvs/yolo_ros/bin/python|' \
+  install/mirte_sorting/lib/mirte_sorting/perception_node
+```
+
+If `pickup_node` is run standalone, apply the same fix:
+
+```bash
+sed -i '1s|.*|#!/absolute/path/to/venvs/yolo_ros/bin/python|' \
+  install/mirte_sorting/lib/mirte_sorting/pickup_node
+```
+
+Use the full absolute venv path from `commands.md`.
+
+If detection does not start, first check the logs for the loaded model path, NumPy errors, or `cv_bridge` import errors.
+
 
 ## pickup_node
 
