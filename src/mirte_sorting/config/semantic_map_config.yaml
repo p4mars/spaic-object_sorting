@@ -1,8 +1,8 @@
 semantic_map_node:
   ros__parameters:
     map_frame: map
-    sample_window: 15
-    time_interval: 0.5
+    sample_window: 10
+    time_interval: 0.2
     tag_names:
       - "1:station_1"
       - "2:station_2"
