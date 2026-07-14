@@ -1,5 +1,5 @@
 # Poster for Symposium
 
-![Uploading image.png…]()
+![Spatial AI poster](PosterSpatialAI.png)
 
 
